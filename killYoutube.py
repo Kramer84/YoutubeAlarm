@@ -13,11 +13,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     hours_wait = int(args.hour[0])
     minutes_wait = int(args.minute[0])
-    
+
     hour_minutes = hours_wait*60
     total_minutes = minutes_wait + hour_minutes
     total_seconds = total_minutes*60+3
-    
+
     print(f"Killing Firefox in {total_seconds} seconds")
     time.sleep(int(total_seconds))
-	os.system("killall firefox")
+    os.system("killall firefox")
