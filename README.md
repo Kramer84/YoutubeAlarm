@@ -81,6 +81,8 @@ If you prefer to install the dependencies manually, follow these steps:
     - Replace `<minute>` with the minute you want the alarm to trigger (0-59).
     - Replace `<playlist_url>` with the URL of the YouTube playlist.
 
+    - e.g. ```python youtube_alarm.py --hour 10 --minute 00 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7```
+
 Example:
 
 ```bash
