@@ -13,9 +13,10 @@ This project is a Python-based alarm clock that plays music from a YouTube playl
 
 - Python 3.8+
 - Conda
-- `pytube`
+- `yt-dlp`
 - `pydub`
 - `ffmpeg`
+- `aiofiles`
 
 ## Installation
 
@@ -53,7 +54,7 @@ If you prefer to install the dependencies manually, follow these steps:
 3. Install the required libraries:
 
     ```bash
-    conda install -c conda-forge pytube pydub ffmpeg -y
+    conda install -c conda-forge yt-dlp pydub ffmpeg aiofiles -y
     ```
 
 4. Deactivate the environment:
@@ -96,6 +97,7 @@ Contributions are welcome! Please open an issue or submit a pull request with yo
 
 ## Acknowledgements
 
-- [pytube](https://github.com/nficano/pytube) for YouTube video downloading.
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) for YouTube video downloading.
 - [pydub](https://github.com/jiaaro/pydub) for audio handling.
 - [ffmpeg](https://ffmpeg.org/) for audio conversion.
+- [aiofiles](https://github.com/Tinche/aiofiles) for asynchronous file handling.
