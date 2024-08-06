@@ -27,14 +27,18 @@ async def download_audio(video_url, download_folder):
         }],
         'noplaylist': True,
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info_dict = ydl.extract_info(video_url, download=True)
-        title = info_dict.get('title', None)
-        if title:
-            return os.path.join(download_folder, f"{title}.mp3")
-        else:
-            logging.error(f"Failed to extract video info for {video_url}")
-            return None
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(video_url, download=True)
+            title = info_dict.get('title', None)
+            if title:
+                return os.path.join(download_folder, f"{title}.mp3")
+            else:
+                logging.error(f"Failed to extract video info for {video_url}")
+                return None
+    except yt_dlp.utils.DownloadError as e:
+        logging.error(f"Error downloading {video_url}: {e}")
+        return None
 
 async def play_audio(file_path):
     audio = AudioSegment.from_file(file_path)
@@ -47,9 +51,13 @@ async def schedule_downloads(videos, download_folder):
     await asyncio.gather(*tasks)
 
 async def load_metadata():
-    if os.path.exists(METADATA_FILE):
+    if os.path.exists(METADATA_FILE) and os.path.getsize(METADATA_FILE) > 0:
         async with aiofiles.open(METADATA_FILE, 'rb') as f:
-            return pickle.loads(await f.read())
+            try:
+                return pickle.loads(await f.read())
+            except EOFError:
+                logging.error("Metadata file is corrupted. Creating a new one.")
+                return {}
     return {}
 
 async def save_metadata(metadata):
@@ -86,7 +94,11 @@ async def main(playlist_url):
         while not download_queue.empty():
             video_url = await download_queue.get()
             with yt_dlp.YoutubeDL({'quiet': True, 'forceurl': True}) as ydl:
-                info = ydl.extract_info(video_url, download=False)
+                try:
+                    info = ydl.extract_info(video_url, download=False)
+                except yt_dlp.utils.DownloadError as e:
+                    logging.error(f"Error extracting info for {video_url}: {e}")
+                    continue
                 title = info.get('title', None)
                 video_id = info.get('id', None)
 
@@ -95,9 +107,10 @@ async def main(playlist_url):
             if title not in downloaded_files and video_id not in metadata:
                 logging.info(f"Downloading {title}...")
                 mp3_file = await download_audio(video_url, DOWNLOAD_FOLDER)
-                metadata[video_id] = mp3_file
-                await save_metadata(metadata)
-                await play_queue.put(mp3_file)
+                if mp3_file:
+                    metadata[video_id] = mp3_file
+                    await save_metadata(metadata)
+                    await play_queue.put(mp3_file)
 
     async def player():
         while True:
@@ -117,7 +130,11 @@ async def main(playlist_url):
 
                 for url in next_videos:
                     with yt_dlp.YoutubeDL({'quiet': True, 'forceurl': True}) as ydl:
-                        info = ydl.extract_info(url, download=False)
+                        try:
+                            info = ydl.extract_info(url, download=False)
+                        except yt_dlp.utils.DownloadError as e:
+                            logging.error(f"Error extracting info for {url}: {e}")
+                            continue
                         if info['duration'] > 600:
                             long_videos.append(url)
 
@@ -126,7 +143,10 @@ async def main(playlist_url):
                     await schedule_downloads(long_videos, DOWNLOAD_FOLDER)
                     break
 
-    await asyncio.gather(downloader(), player())
+    downloader_task = asyncio.create_task(downloader())
+    player_task = asyncio.create_task(player())
+
+    await asyncio.gather(downloader_task, player_task)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
