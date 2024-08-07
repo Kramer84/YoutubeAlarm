@@ -5,15 +5,15 @@ import os
 import logging
 import random
 import asyncio
-import subprocess
 import yt_dlp
 import requests
+
+from vlc_manager import VLCManager
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 DOWNLOAD_FOLDER = "Downloaded_Music_YouTube"
-VLC_HTTP_URL = "http://localhost:8080/requests/status.json"
-VLC_PASSWORD = "vlc"
+BUFFER_SIZE = 20
 
 class MusicLibrary:
     def __init__(self, folder, validate=False):
@@ -103,7 +103,6 @@ async def download_audio(video_url, download_folder, music_library):
             if title:
                 music_library.add_song(title, file_path)
                 logging.info(f"Downloaded {title} (start: {start_time}, end: {end_time})")
-                await add_to_vlc_playlist(file_path)
                 return title, file_path
             else:
                 logging.error(f"Failed to extract video info for {video_url}")
@@ -112,20 +111,7 @@ async def download_audio(video_url, download_folder, music_library):
         logging.error(f"Error downloading {video_url}: {e}")
         return None
 
-async def add_to_vlc_playlist(file_path):
-    try:
-        requests.get(f"http://localhost:8080/requests/status.json?command=in_enqueue&input=file://{os.path.abspath(file_path)}", auth=("", VLC_PASSWORD))
-        logging.info(f"Added to VLC playlist: {file_path}")
-    except requests.RequestException as e:
-        logging.error(f"Error adding to VLC playlist: {e}")
-
-async def play_audio_vlc():
-    play_command = ["cvlc", "--extraintf=http", "--http-password", VLC_PASSWORD]
-    process = subprocess.Popen(play_command)
-    await asyncio.sleep(5)  # Give VLC a moment to start
-    return process
-
-async def schedule_downloads(videos, download_folder, music_library):
+async def schedule_downloads(videos, download_folder, music_library, vlc_manager):
     tasks = []
     for url in videos:
         title = await extract_video_info(url)
@@ -133,24 +119,26 @@ async def schedule_downloads(videos, download_folder, music_library):
             tasks.append(asyncio.create_task(download_audio(url, download_folder, music_library)))
         else:
             logging.info(f"Song {title} already exists. Skipping download.")
-    await asyncio.gather(*tasks)
+    downloaded_songs = await asyncio.gather(*tasks)
+    for title, file_path in downloaded_songs:
+        if file_path:
+            vlc_manager.add_to_playlist(file_path)
 
-async def pre_download(videos, download_folder, music_library):
-    await schedule_downloads(videos[:20], download_folder, music_library)
-
-async def player_loop(vlc_process):
-    while vlc_process.poll() is None:
-        try:
-            response = requests.get(VLC_HTTP_URL, auth=("", VLC_PASSWORD))
-            if response.status_code == 200 and "state" in response.json() and response.json()["state"] == "stopped":
+async def maintain_buffer(videos, download_folder, music_library, vlc_manager):
+    while videos:
+        while len(music_library.songs) < BUFFER_SIZE:
+            if videos:
+                url = videos.pop(0)
+                title = await extract_video_info(url)
+                if title and not music_library.song_exists(title):
+                    _, file_path = await download_audio(url, download_folder, music_library)
+                    if file_path:
+                        vlc_manager.add_to_playlist(file_path)
+                else:
+                    logging.info(f"Song {title} already exists. Skipping download.")
+            else:
                 break
-            await asyncio.sleep(1)
-        except requests.RequestException as e:
-            logging.error(f"Error checking VLC status: {e}")
-            break
-
-async def downloader_loop(videos, download_folder, music_library):
-    await schedule_downloads(videos, download_folder, music_library)
+        await asyncio.sleep(10)
 
 async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuffle):
     start_time = datetime.datetime.now()
@@ -173,9 +161,8 @@ async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuf
         random.shuffle(videos)
 
     music_library = MusicLibrary(DOWNLOAD_FOLDER, validate=validate)
-
-    # Start pre-downloading songs
-    await pre_download(videos, DOWNLOAD_FOLDER, music_library)
+    vlc_manager = VLCManager()
+    vlc_manager.initialize_vlc_server()
 
     if test_mode:
         logging.info("Test mode activated. Starting playback immediately.")
@@ -193,12 +180,15 @@ async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuf
 
     logging.info("Alarm triggered!")
 
-    vlc_process = await play_audio_vlc()
+    # Add initial songs to VLC playlist
+    for song in music_library.songs[:BUFFER_SIZE]:
+        vlc_manager.add_to_playlist(song["file_path"])
+
+    vlc_manager.start_playback()
 
     # Start the player and downloader loops
     await asyncio.gather(
-        player_loop(vlc_process),
-        downloader_loop(videos, DOWNLOAD_FOLDER, music_library)
+        maintain_buffer(videos, DOWNLOAD_FOLDER, music_library, vlc_manager)
     )
 
 if __name__ == "__main__":

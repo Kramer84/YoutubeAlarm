@@ -10,7 +10,7 @@ conda create --name $ENV_NAME python=3.8 -y
 source activate $ENV_NAME
 
 # Install the required libraries
-conda install -c conda-forge yt-dlp pydub ffmpeg aiofiles -y
+conda install -c conda-forge yt-dlp requests ffmpeg psutil -y
 
 # Deactivate the environment
 conda deactivate
