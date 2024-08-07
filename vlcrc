@@ -1,0 +1,3 @@
+mkdir -p ~/.config/vlc
+echo 'http-host=localhost' > ~/.config/vlc/vlcrc
+echo 'http-password=vlc' >> ~/.config/vlc/vlcrc

@@ -8,15 +8,17 @@ This project is a Python-based alarm clock that plays music from a YouTube playl
 - Check if the audio has already been downloaded to avoid redundant downloads.
 - Monitor the playlist for changes and download new songs asynchronously.
 - Play a randomly selected song from the downloaded collection at the specified alarm time.
+- Optionally validate the integrity of MP3 files.
+- Use VLC media player for non-blocking audio playback.
 
 ## Requirements
 
 - Python 3.8+
 - Conda
 - `yt-dlp`
-- `pydub`
+- `requests`
 - `ffmpeg`
-- `aiofiles`
+- VLC media player
 
 ## Installation
 
@@ -54,7 +56,7 @@ If you prefer to install the dependencies manually, follow these steps:
 3. Install the required libraries:
 
     ```bash
-    conda install -c conda-forge yt-dlp pydub ffmpeg aiofiles -y
+    conda install -c conda-forge yt-dlp requests ffmpeg -y
     ```
 
 4. Deactivate the environment:
@@ -62,6 +64,16 @@ If you prefer to install the dependencies manually, follow these steps:
     ```bash
     conda deactivate
     ```
+
+## VLC Configuration
+
+Enable VLC's HTTP interface by creating a VLC configuration file `vlcrc` if it doesn't already exist:
+
+```sh
+mkdir -p ~/.config/vlc
+echo 'http-host=localhost' > ~/.config/vlc/vlcrc
+echo 'http-password=vlc' >> ~/.config/vlc/vlcrc
+```
 
 ## Usage
 
@@ -83,10 +95,15 @@ If you prefer to install the dependencies manually, follow these steps:
 
     - e.g. ```python youtube_alarm.py --hour 10 --minute 00 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7```
 
+3. Optional flags:
+
+    - `--test`: Start playback immediately for testing purposes.
+    - `--validate`: Validate MP3 files in the music library before starting.
+
 Example:
 
 ```bash
-python youtube_alarm.py --hour 7 --minute 30 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7
+python youtube_alarm.py --hour 7 --minute 30 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7 --test --validate
 ```
 
 ## License
@@ -100,6 +117,6 @@ Contributions are welcome! Please open an issue or submit a pull request with yo
 ## Acknowledgements
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) for YouTube video downloading.
-- [pydub](https://github.com/jiaaro/pydub) for audio handling.
+- [requests](https://github.com/psf/requests) for handling HTTP requests.
 - [ffmpeg](https://ffmpeg.org/) for audio conversion.
-- [aiofiles](https://github.com/Tinche/aiofiles) for asynchronous file handling.
+- [VLC](https://www.videolan.org/vlc/) for media playback.
