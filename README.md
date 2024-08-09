@@ -1,3 +1,5 @@
+Here is the updated `README` file:
+
 # YouTube Alarm Clock
 
 This project is a Python-based alarm clock that plays music from a YouTube playlist. The script downloads the audio from the playlist, stores it locally, and plays it at the specified alarm time.
@@ -13,7 +15,7 @@ This project is a Python-based alarm clock that plays music from a YouTube playl
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.x
 - Conda
 - `yt-dlp`
 - `requests`
@@ -41,10 +43,10 @@ Run the provided bash script to create the Conda environment and install the nec
 
 If you prefer to install the dependencies manually, follow these steps:
 
-1. Create a new Conda environment and install Python 3.8:
+1. Create a new Conda environment and install Python:
 
     ```bash
-    conda create --name youtubeAlarm python=3.8 -y
+    conda create --name youtubeAlarm python -y
     ```
 
 2. Activate the environment:
@@ -56,10 +58,17 @@ If you prefer to install the dependencies manually, follow these steps:
 3. Install the required libraries:
 
     ```bash
-    conda install -c conda-forge yt-dlp requests ffmpeg -y
+    conda install -c conda-forge yt-dlp requests ffmpeg psutil -y
+    conda install -c anaconda logging argparse
     ```
 
-4. Deactivate the environment:
+4. Install additional libraries via pip if necessary:
+
+    ```bash
+    pip install python-vlc
+    ```
+
+5. Deactivate the environment:
 
     ```bash
     conda deactivate
@@ -99,11 +108,12 @@ echo 'http-password=vlc' >> ~/.config/vlc/vlcrc
 
     - `--test`: Start playback immediately for testing purposes.
     - `--validate`: Validate MP3 files in the music library before starting.
+    - `--shuffle`: Shuffle the playlist before playing.
 
 Example:
 
 ```bash
-python youtube_alarm.py --hour 7 --minute 30 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7 --test --validate
+python youtube_alarm.py --hour 7 --minute 30 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7 --test --validate --shuffle
 ```
 
 ## License
