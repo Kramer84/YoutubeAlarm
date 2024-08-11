@@ -222,6 +222,7 @@ async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuf
         random.shuffle(videos)
 
     music_library = MusicLibrary("Downloaded_Music_YouTube", validate=validate)
+    music_library.initialize_playlist(playlist_name)
     music_library.check_metadata(playlist_name)  # Check metadata for existing songs in the playlist
     music_library.clean_up_non_mp3_files(playlist_name)
     if validate :

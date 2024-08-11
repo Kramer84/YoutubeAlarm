@@ -22,6 +22,12 @@ class MusicLibrary:
             os.makedirs(self.base_folder)
         self.scan_folders()
 
+    def initialize_playlist(self, playlist_name):
+        """Initialize the music library by scanning the base folder and loading existing MP3 files organized by playlists."""
+        if not os.path.exists(os.path.join(self.base_folder, playlist_name)):
+            os.makedirs(os.path.join(self.base_folder, playlist_name))
+        self.scan_folders()
+
     def scan_folders(self):
         """Scan all playlist folders and load MP3 files into the library."""
         self.songs.clear()

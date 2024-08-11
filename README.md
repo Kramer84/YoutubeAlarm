@@ -1,5 +1,3 @@
-Here is the updated `README` file:
-
 # YouTube Alarm Clock
 
 This project is a Python-based alarm clock that plays music from a YouTube playlist. The script downloads the audio from the playlist, stores it locally, and plays it at the specified alarm time.
