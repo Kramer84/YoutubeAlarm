@@ -1,9 +1,13 @@
 import os
 import logging
+import re
 import subprocess
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TXXX
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(module)s - %(funcName)s - line %(lineno)d - %(message)s'
+)
 
 class MusicLibrary:
     def __init__(self, base_folder, validate=False):
@@ -30,11 +34,17 @@ class MusicLibrary:
         """Scan a specific playlist folder and load MP3 files into the library."""
         for f in os.listdir(playlist_folder):
             if f.endswith(".mp3"):
-                video_id = f.split("_")[0]
-                self.songs[(playlist_name, video_id)] = {
-                    "title": f[:-4],
-                    "file_path": os.path.join(playlist_folder, f)
-                }
+                if self.is_valid_filename_format(f):
+                    video_id = self.extract_youtube_id(f)
+                    file_path = os.path.join(playlist_folder, f)
+                    metadata = self.get_metadata_by_path(file_path)
+                    self.songs[(playlist_name, video_id)] = {
+                        "title": metadata["title"] if metadata else f[12:-4],  # Title is everything after YouTubeID_ until .mp3
+                        "file_path": file_path,
+                        "youtube_id": video_id
+                    }
+                else:
+                    logging.warning(f"Invalid filename format: {f}")
 
     def clean_up_non_mp3_files(self, playlist_name):
         """Remove any non-MP3 files from a specific playlist folder."""
@@ -57,7 +67,7 @@ class MusicLibrary:
         if file_path != final_path:
             os.rename(file_path, final_path)
 
-        self.songs[(playlist_name, video_id)] = {"title": title, "file_path": final_path}
+        self.songs[(playlist_name, video_id)] = {"title": title, "file_path": final_path, "youtube_id": video_id}
 
     def remove_song(self, playlist_name, video_id):
         """Remove a song from the library by its playlist and video ID."""
@@ -67,15 +77,20 @@ class MusicLibrary:
             del self.songs[key]
             logging.info(f"Removed song with ID {video_id} from playlist {playlist_name}.")
 
-    def song_exists(self, playlist_name, video_id):
-        """Check if a song exists in the library by its playlist and video ID."""
-        return (playlist_name, video_id) in self.songs
+    def song_exists(self, playlist_name, video_id=None, title=None, file_name=None):
+        """Check if a song exists in the library by its playlist and either video ID, title, or file name."""
+        if video_id:
+            return (playlist_name, video_id) in self.songs
+        elif title:
+            return any(song["title"] == title for (pl, _), song in self.songs.items() if pl == playlist_name)
+        elif file_name:
+            return any(os.path.basename(song["file_path"]) == file_name for (pl, _), song in self.songs.items() if pl == playlist_name)
+        return False
 
     def validate_songs(self, playlist_name=None):
         """Validate all MP3 files in the library and remove corrupted ones."""
         valid_songs = {}
         if playlist_name:
-            playlist_folder = os.path.join(self.base_folder, playlist_name)
             for key, song in self.songs.items():
                 if key[0] == playlist_name and self.is_valid_mp3(song["file_path"]):
                     valid_songs[key] = song
@@ -125,6 +140,30 @@ class MusicLibrary:
         logging.info(f"Album: {audio.get('TALB')}")
         logging.info(f"YouTube ID: {audio.get('TXXX:YouTubeID')}")
 
+    def get_metadata_by_path(self, file_path):
+        """Retrieve metadata based on the file path."""
+        try:
+            audio = ID3(file_path)
+            return {
+                "title": audio.get('TIT2').text[0] if audio.get('TIT2') else None,
+                "artist": audio.get('TPE1').text[0] if audio.get('TPE1') else None,
+                "album": audio.get('TALB').text[0] if audio.get('TALB') else None,
+                "youtube_id": audio.get('TXXX:YouTubeID').text[0] if audio.get('TXXX:YouTubeID') else None,
+                "file_path": file_path
+            }
+        except Exception as e:
+            logging.error(f"Error retrieving metadata from {file_path}: {e}")
+            return None
+
+    def is_valid_filename_format(self, filename):
+        """Check if the filename matches the expected format: 'YouTubeID_Title.mp3'."""
+        pattern = r'^[a-zA-Z0-9_-]{11}_.+\.mp3$'
+        return bool(re.match(pattern, filename))
+
+    def extract_youtube_id(self, filename):
+        """Extract the YouTube ID from the filename (first 11 characters)."""
+        return filename[:11]
+
     def count_songs(self, playlist_name=None):
         """Return the number of songs in the entire library or within a specific playlist."""
         if playlist_name:
@@ -151,3 +190,51 @@ class MusicLibrary:
         if playlist_name:
             return [song["title"] for key, song in self.songs.items() if key[0] == playlist_name]
         return [song["title"] for song in self.songs.values()]
+
+    def check_youtube_ids(self, youtube_ids, playlist_name=None):
+        """
+        Check if the provided list of YouTube IDs corresponds to songs already in the library.
+
+        Args:
+            youtube_ids (list): List of YouTube IDs to check.
+            playlist_name (str, optional): If provided, only check within this playlist.
+
+        Returns:
+            list: List of boolean values. True if the song is already in the library, False otherwise.
+        """
+        results = []
+
+        for video_id in youtube_ids:
+            if playlist_name:
+                exists = (playlist_name, video_id) in self.songs
+            else:
+                exists = any(pl_id == video_id for pl, pl_id in self.songs.keys())
+            results.append(exists)
+
+        return results
+
+    def get_song_paths_by_id(self, video_id, playlist_name=None):
+        """
+        Get the file path(s) of a song by its YouTube ID.
+
+        Args:
+            video_id (str): The YouTube ID of the song.
+            playlist_name (str, optional): If provided, search within this playlist. Otherwise, search across all playlists.
+
+        Returns:
+            list: A list of file paths for the song(s) matching the YouTube ID.
+        """
+        paths = []
+
+        if playlist_name:
+            # Search within the specified playlist
+            key = (playlist_name, video_id)
+            if key in self.songs:
+                paths.append(self.songs[key]['file_path'])
+        else:
+            # Search across all playlists
+            for (pl_name, pl_id), song in self.songs.items():
+                if pl_id == video_id:
+                    paths.append(song['file_path'])
+
+        return paths
