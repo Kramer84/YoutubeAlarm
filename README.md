@@ -1,15 +1,17 @@
 # YouTube Alarm Clock
 
-This project is a Python-based alarm clock that plays music from a YouTube playlist. The script downloads the audio from the playlist, stores it locally, and plays it at the specified alarm time.
+This project is a Python-based alarm clock that plays music from a YouTube playlist. The script downloads the audio from the playlist, stores it locally, and plays it at the specified alarm time using VLC media player. It also includes robust handling for metadata management, asynchronous downloading, and validation of downloaded files.
 
 ## Features
 
-- Download audio from a YouTube playlist and store it locally in the highest available quality.
-- Check if the audio has already been downloaded to avoid redundant downloads.
-- Monitor the playlist for changes and download new songs asynchronously.
-- Play a randomly selected song from the downloaded collection at the specified alarm time.
-- Optionally validate the integrity of MP3 files.
-- Use VLC media player for non-blocking audio playback.
+- **Download and Store Audio**: Downloads audio from a YouTube playlist and stores it locally in high-quality MP3 format.
+- **Metadata Management**: Automatically adds ID3 tags (title, artist, album) to downloaded MP3 files.
+- **Redundant Download Avoidance**: Checks if audio has already been downloaded to avoid redundant downloads.
+- **Asynchronous Operations**: Monitors the playlist and downloads new songs asynchronously.
+- **Playlist Management**: Maintains a buffer of songs to ensure continuous playback without interruptions.
+- **Alarm Triggered Playback**: Plays music at a specified alarm time, optionally starting with a set number of pre-downloaded songs.
+- **File Validation**: Optionally validate the integrity of MP3 files in the music library.
+- **VLC Integration**: Uses VLC media player for non-blocking audio playback with the ability to manage and monitor the playlist.
 
 ## Requirements
 
@@ -19,6 +21,8 @@ This project is a Python-based alarm clock that plays music from a YouTube playl
 - `requests`
 - `ffmpeg`
 - VLC media player
+- `mutagen` (for metadata handling)
+- `psutil` (for process management)
 
 ## Installation
 
@@ -58,15 +62,10 @@ If you prefer to install the dependencies manually, follow these steps:
     ```bash
     conda install -c conda-forge yt-dlp requests ffmpeg psutil -y
     conda install -c anaconda logging argparse
+    pip install mutagen python-vlc
     ```
 
-4. Install additional libraries via pip if necessary:
-
-    ```bash
-    pip install python-vlc
-    ```
-
-5. Deactivate the environment:
+4. Deactivate the environment:
 
     ```bash
     conda deactivate
@@ -100,7 +99,11 @@ echo 'http-password=vlc' >> ~/.config/vlc/vlcrc
     - Replace `<minute>` with the minute you want the alarm to trigger (0-59).
     - Replace `<playlist_url>` with the URL of the YouTube playlist.
 
-    - e.g. ```python youtube_alarm.py --hour 10 --minute 00 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7```
+    Example:
+
+    ```bash
+    python youtube_alarm.py --hour 10 --minute 00 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7
+    ```
 
 3. Optional flags:
 
@@ -108,11 +111,29 @@ echo 'http-password=vlc' >> ~/.config/vlc/vlcrc
     - `--validate`: Validate MP3 files in the music library before starting.
     - `--shuffle`: Shuffle the playlist before playing.
 
-Example:
+    Example with optional flags:
 
-```bash
-python youtube_alarm.py --hour 7 --minute 30 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7 --test --validate --shuffle
-```
+    ```bash
+    python youtube_alarm.py --hour 7 --minute 30 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7 --test --validate --shuffle
+    ```
+
+## Testing
+
+### Unit Tests
+
+Unit tests are available to validate the functionality of both the `MusicLibrary` and `VLCManager` classes.
+
+1. **Run Music Library Tests**:
+
+    ```bash
+    python -m unittest discover -s tests -p "music_library_test.py"
+    ```
+
+2. **Run VLC Manager Tests**:
+
+    ```bash
+    python -m unittest discover -s tests -p "vlc_test.py"
+    ```
 
 ## License
 
@@ -125,6 +146,7 @@ Contributions are welcome! Please open an issue or submit a pull request with yo
 ## Acknowledgements
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) for YouTube video downloading.
-- [requests](https://github.com/psf/requests) for handling HTTP requests.
 - [ffmpeg](https://ffmpeg.org/) for audio conversion.
 - [VLC](https://www.videolan.org/vlc/) for media playback.
+- [mutagen](https://mutagen.readthedocs.io/en/latest/) for ID3 tag handling.
+- [psutil](https://github.com/giampaolo/psutil) for process management.
