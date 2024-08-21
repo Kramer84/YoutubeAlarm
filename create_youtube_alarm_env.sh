@@ -11,9 +11,7 @@ conda create --name $ENV_NAME python=3.8 \
               conda-forge::psutil \
               conda-forge::aioconsole \
               conda-forge::mutagen \
-              conda-forge::python-slugify \
-              anaconda::logging \
-              anaconda::argparse -y
+              conda-forge::python-slugify -y
 
 # Activate the environment
 source activate $ENV_NAME
