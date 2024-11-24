@@ -15,7 +15,7 @@ import subprocess
 from vlc_manager import VLCManager
 from music_library import MusicLibrary  # Import the updated MusicLibrary class
 import signal
-from slugify import slugify as sanitize_title  # Or define your own sanitize function
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,6 +39,24 @@ async def extract_video_info(video_url):
         logging.error(f"Error extracting info for {video_url}: {e}")
         return None
 
+def sanitize_name(name, max_length=100):
+    """
+    Sanitizes a file or playlist name by removing or replacing invalid characters.
+
+    Args:
+        name (str): The original name to sanitize.
+        max_length (int): Maximum length for the sanitized name. Default is 50.
+
+    Returns:
+        str: The sanitized name.
+    """
+    # Replace problematic characters with underscores
+    sanitized = re.sub(r'[^\w\s-]', '_', name)
+    # Replace multiple spaces or underscores with a single underscore
+    sanitized = re.sub(r'[\s_]+', '_', sanitized).strip('_')
+    # Limit the length if it exceeds max_length
+    return sanitized[:max_length]
+
 async def download_audio(video_url, playlist_name, music_library):
     playlist_folder = os.path.join(music_library.base_folder, playlist_name)
     ydl_opts = {
@@ -58,39 +76,42 @@ async def download_audio(video_url, playlist_name, music_library):
             info_dict = ydl.extract_info(video_url, download=True)
             end_time = datetime.datetime.now()
             video_id = info_dict.get('id')
-            title = info_dict.get('title')
-            artist = info_dict.get('uploader')
-            album = playlist_name  # Use the playlist name as the album
+            if not music_library.song_exists(playlist_name, video_id):
+                title = info_dict.get('title')
+                artist = info_dict.get('uploader')
+                album = playlist_name  # Use the playlist name as the album
 
-            # Use the original title as it is without sanitizing it
-            file_path = os.path.join(playlist_folder, f"{video_id}_{title}.mp3")
+                # Use the original title as it is without sanitizing it
+                file_path = os.path.join(playlist_folder, f"{video_id}_{(title)}.mp3")
 
-            # Verify if the file was actually created
-            if os.path.exists(file_path):
-                logging.info(f"File {file_path} exists after download.")
+                # Verify if the file was actually created
+                if os.path.exists(file_path):
+                    logging.info(f"File {file_path} exists after download.")
 
-                music_library.add_song(playlist_name, video_id, title, file_path)
+                    music_library.add_song(playlist_name, video_id, title, os.path.join(playlist_folder, f"{video_id}_{sanitize_name(title)}.mp3"))
 
-                try:
-                    # Add ID3 metadata
-                    audio = ID3(file_path)
-                    audio.add(TIT2(encoding=3, text=title))
-                    if artist:
-                        audio.add(TPE1(encoding=3, text=artist))
-                    audio.add(TALB(encoding=3, text=album))  # Set album as playlist name
-                    audio.add(TXXX(encoding=3, desc='YouTubeID', text=video_id))
-                    audio.add(TXXX(encoding=3, desc='PlaylistName', text=playlist_name))  # Save playlist info in metadata
-                    audio.save()
-                except MutagenError as e:
-                    logging.error(f"Mutagen error while processing {file_path}: {e}")
+                    try:
+                        # Add ID3 metadata
+                        audio = ID3(file_path)
+                        audio.add(TIT2(encoding=3, text=title))
+                        if artist:
+                            audio.add(TPE1(encoding=3, text=artist))
+                        audio.add(TALB(encoding=3, text=album))  # Set album as playlist name
+                        audio.add(TXXX(encoding=3, desc='YouTubeID', text=video_id))
+                        audio.add(TXXX(encoding=3, desc='PlaylistName', text=playlist_name))  # Save playlist info in metadata
+                        audio.save()
+                    except MutagenError as e:
+                        logging.error(f"Mutagen error while processing {file_path}: {e}")
+                        return None
+
+                    logging.info(f"Downloaded {title} (start: {start_time}, end: {end_time})")
+                    logging.info(f"Saved as: {file_path} with metadata - Title: {title}, Artist: {artist}, Album: {album}, YouTubeID: {video_id}")
+
+                    return file_path  # Return the file path instead of adding directly to VLC playlist
+                else:
+                    logging.error(f"File not found after download: {file_path}")
                     return None
-
-                logging.info(f"Downloaded {title} (start: {start_time}, end: {end_time})")
-                logging.info(f"Saved as: {file_path} with metadata - Title: {title}, Artist: {artist}, Album: {album}, YouTubeID: {video_id}")
-
-                return file_path  # Return the file path instead of adding directly to VLC playlist
-            else:
-                logging.error(f"File not found after download: {file_path}")
+            else :
                 return None
     except (yt_dlp.utils.DownloadError, FileNotFoundError) as e:
         logging.error(f"Error processing {video_url}: {e}")
@@ -113,7 +134,7 @@ async def maintain_buffer(videos, playlist_name, music_library, vlc_manager, cur
         next_video_url = videos.pop(0)
         info_dict = await extract_video_info(next_video_url)
         video_id = info_dict.get('id', None) if info_dict else None
-        title = info_dict.get('title', None) if info_dict else None
+        title = sanitize_name(info_dict.get('title', None)) if info_dict else None
 
         if video_id and title:
             # Check if the song is already in the buffer or playlist
@@ -187,6 +208,12 @@ async def main_loop(videos, playlist_name, music_library, vlc_manager, alarm_tim
             await maintain_buffer(videos, playlist_name, music_library, vlc_manager, current_song_index)
         await asyncio.sleep(.25)
 
+async def download_entire_playlist(videos, playlist_name, music_library):
+    """Downloads the entire playlist at once."""
+    for video_url in videos:
+        await download_audio(video_url, playlist_name, music_library)
+    logging.info("Entire playlist downloaded.")
+
 def signal_handler(signal, frame):
     logging.info("Ctrl+C detected. Exiting gracefully...")
     for task in asyncio.all_tasks():
@@ -198,7 +225,8 @@ def extract_youtube_id(url):
     match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
     return match.group(1) if match else None
 
-async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuffle):
+
+async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuffle, download_all):
     signal.signal(signal.SIGINT, signal_handler)
 
     start_time = datetime.datetime.now()
@@ -212,7 +240,8 @@ async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuf
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         playlist_info = ydl.extract_info(playlist_url, download=False)
         videos = [entry['url'] for entry in playlist_info['entries']]
-        playlist_name = playlist_info.get('title', 'Unknown Playlist')
+        # Get the original playlist name and replace invalid characters
+        playlist_name = sanitize_name(playlist_info.get('title', 'Unknown Playlist'))
 
     if not videos:
         logging.error("No videos found in the playlist.")
@@ -225,35 +254,31 @@ async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuf
     music_library.initialize_playlist(playlist_name)
     music_library.check_metadata(playlist_name)  # Check metadata for existing songs in the playlist
     music_library.clean_up_non_mp3_files(playlist_name)
-    if validate :
+    if validate:
         music_library.validate_songs(playlist_name)
+
     vlc_manager = VLCManager()
 
-    # Extract YouTube IDs from URLs
-    youtube_ids = [extract_youtube_id(video) for video in videos]
+    if download_all:
+        # Download the entire playlist without buffering
+        await download_entire_playlist(videos, playlist_name, music_library)
+    else:
+        # Existing code for alarm and buffer-based playback
+        now = datetime.datetime.now()
+        wake_up_time = datetime.datetime(now.year, now.month, now.day, hour_alarm, minute_alarm)
+        if now > wake_up_time:
+            wake_up_time += datetime.timedelta(days=1)
 
-    # Check which songs are already downloaded
-    songs_in_library = music_library.check_youtube_ids(youtube_ids, playlist_name)
+        logging.info(f"Alarm set for {wake_up_time.strftime('%A, %B %d, %Y %I:%M %p')}")
 
-    # Only keep the URLs for songs that are not yet downloaded
-    videos_to_download = [video for video, exists in zip(videos, songs_in_library) if not exists]
+        # Ensure initial buffer is filled with the first MIN_SONGS_TO_START songs
+        for i in range(min(MIN_SONGS_TO_START, len(videos))):
+            youtube_id = extract_youtube_id(videos[i])
+            if not music_library.song_exists(playlist_name, video_id=youtube_id):
+                await download_audio(videos_to_download.pop(0), playlist_name, music_library)
 
-    now = datetime.datetime.now()
-    wake_up_time = datetime.datetime(now.year, now.month, now.day, hour_alarm, minute_alarm)
-    if now > wake_up_time:
-        wake_up_time += datetime.timedelta(days=1)
-
-    logging.info(f"Alarm set for {wake_up_time.strftime('%A, %B %d, %Y %I:%M %p')}")
-
-    # Ensure initial buffer is filled with the first MIN_SONGS_TO_START songs
-    for i in range(min(MIN_SONGS_TO_START, len(videos))):
-        youtube_id = extract_youtube_id(videos[i])
-        if not music_library.song_exists(playlist_name, video_id=youtube_id):
-            await download_audio(videos_to_download.pop(0), playlist_name, music_library)
-
-    logging.info(f"Finished checking initial data buffer.")
-
-    await main_loop(videos, playlist_name, music_library, vlc_manager, wake_up_time, test_mode)
+        logging.info(f"Finished checking initial data buffer.")
+        await main_loop(videos, playlist_name, music_library, vlc_manager, wake_up_time, test_mode)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -265,6 +290,7 @@ if __name__ == "__main__":
     parser.add_argument('--test', action='store_true', help='Test mode to validate the script without waiting for the alarm')
     parser.add_argument('--validate', action='store_true', help='Validate MP3 files in the music library')
     parser.add_argument('--shuffle', action='store_true', help='Shuffle the playlist')
+    parser.add_argument('--download-all', action='store_true', help='Download the entire playlist immediately without waiting')
     args = parser.parse_args()
 
     hour_alarm = args.hour
@@ -273,5 +299,6 @@ if __name__ == "__main__":
     test_mode = args.test
     validate = args.validate
     shuffle = args.shuffle
+    download_all = args.download_all
 
-    asyncio.run(main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuffle))
+    asyncio.run(main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuffle, download_all))
