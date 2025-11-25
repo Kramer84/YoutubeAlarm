@@ -25,7 +25,6 @@ This project is a Python-based alarm clock that plays music from a YouTube playl
   - `mutagen`
   - `psutil`
   - `aioconsole`
-  - `python-slugify`
   - `python-vlc`
 
 ## Installation
@@ -60,7 +59,7 @@ Windows users cannot run the `.sh` script directly. Please run these commands in
 ```bash
 conda create --name youtubeAlarm python=3.8 -y
 conda activate youtubeAlarm
-conda install -c conda-forge yt-dlp requests ffmpeg psutil aioconsole python-slugify mutagen -y
+conda install -c conda-forge yt-dlp requests ffmpeg psutil aioconsole mutagen -y
 pip install python-vlc
 ```
 

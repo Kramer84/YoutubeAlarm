@@ -1,11 +1,11 @@
 import os
+import time
 import logging
 import requests
 import subprocess
-import time
+import asyncio
 import signal
 import psutil
-import asyncio
 
 logging.basicConfig(
     level=logging.INFO,

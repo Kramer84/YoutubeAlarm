@@ -1,21 +1,23 @@
+import os
 import re
 import time
+import random
+import logging
+import asyncio
 import datetime
 import argparse
-import os
-import logging
-import random
-import asyncio
-import yt_dlp
 import requests
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, TXXX
-from mutagen import MutagenError
-import re
 import subprocess
-from vlc_manager import VLCManager
-from music_library import MusicLibrary  # Import the updated MusicLibrary class
 import signal
 
+import yt_dlp
+
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, TXXX
+from mutagen import MutagenError
+
+from .utils import extract_id_from_url, sanitize_name
+from .vlc_manager import VLCManager
+from .music_library import MusicLibrary  # Import the updated MusicLibrary class
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,8 +40,6 @@ async def extract_video_info(video_url):
     except yt_dlp.utils.DownloadError as e:
         logging.error(f"Error extracting info for {video_url}: {e}")
         return None
-
-
 
 async def download_audio(video_url, playlist_name, music_library):
     playlist_folder = os.path.join(music_library.base_folder, playlist_name)
@@ -204,12 +204,6 @@ def signal_handler(signal, frame):
         task.cancel()
     asyncio.get_event_loop().stop()
 
-def extract_youtube_id(url):
-    """Extract the YouTube ID from a YouTube URL."""
-    match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
-    return match.group(1) if match else None
-
-
 async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuffle, download_all):
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -257,14 +251,17 @@ async def main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuf
 
         # Ensure initial buffer is filled with the first MIN_SONGS_TO_START songs
         for i in range(min(MIN_SONGS_TO_START, len(videos))):
-            youtube_id = extract_youtube_id(videos[i])
+            youtube_id = extract_id_from_url(videos[i])
             if not music_library.song_exists(playlist_name, video_id=youtube_id):
                 await download_audio(videos_to_download.pop(0), playlist_name, music_library)
 
         logging.info(f"Finished checking initial data buffer.")
         await main_loop(videos, playlist_name, music_library, vlc_manager, wake_up_time, test_mode)
 
-if __name__ == "__main__":
+def entry_point():
+    """
+    The main entry point for the 'youtube-alarm' command line script.
+    """
     parser = argparse.ArgumentParser(
                     prog='YoutubeAlarm',
                     description='Launches youtube with an alarm, pass time as parameter')
@@ -275,14 +272,19 @@ if __name__ == "__main__":
     parser.add_argument('--validate', action='store_true', help='Validate MP3 files in the music library')
     parser.add_argument('--shuffle', action='store_true', help='Shuffle the playlist')
     parser.add_argument('--download-all', action='store_true', help='Download the entire playlist immediately without waiting')
+
     args = parser.parse_args()
 
-    hour_alarm = args.hour
-    minute_alarm = args.minute
-    playlist_url = args.playlist
-    test_mode = args.test
-    validate = args.validate
-    shuffle = args.shuffle
-    download_all = args.download_all
+    # Pass the arguments to your async main function
+    asyncio.run(main(
+        playlist_url=args.playlist,
+        hour_alarm=args.hour,
+        minute_alarm=args.minute,
+        test_mode=args.test,
+        validate=args.validate,
+        shuffle=args.shuffle,
+        download_all=args.download_all
+    ))
 
-    asyncio.run(main(playlist_url, hour_alarm, minute_alarm, test_mode, validate, shuffle, download_all))
+if __name__ == "__main__":
+    entry_point()

@@ -10,8 +10,7 @@ conda create --name $ENV_NAME python=3.8 \
               conda-forge::ffmpeg \
               conda-forge::psutil \
               conda-forge::aioconsole \
-              conda-forge::mutagen \
-              conda-forge::python-slugify -y
+              conda-forge::mutagen -y
 
 # Activate the environment
 source activate $ENV_NAME

@@ -1,8 +1,11 @@
 import os
-import logging
 import re
+import logging
 import subprocess
+
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TXXX
+
+from .utils import extract_id_from_filename
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,7 +44,7 @@ class MusicLibrary:
         for f in os.listdir(playlist_folder):
             if f.endswith(".mp3"):
                 if self.is_valid_filename_format(f):
-                    video_id = self.extract_youtube_id(f)
+                    video_id = extract_id_from_filename(f)
                     file_path = os.path.join(playlist_folder, f)
                     metadata = self.get_metadata_by_path(file_path)
                     self.songs[(playlist_name, video_id)] = {
