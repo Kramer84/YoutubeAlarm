@@ -27,8 +27,8 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/youtube-alarm-clock"
-"Bug Tracker" = "https://github.com/yourusername/youtube-alarm-clock/issues"
+"Homepage" = "https://github.com/Kramer84/YoutubeAlarm"
+"Bug Tracker" = "https://github.com/Kramer84/YoutubeAlarm/issues"
 
 [project.scripts]
 # This allows you to run the alarm by typing `youtube-alarm` in the terminal

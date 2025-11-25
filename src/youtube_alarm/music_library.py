@@ -5,7 +5,7 @@ import subprocess
 
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TXXX
 
-from .utils import extract_id_from_filename
+from .utils import extract_id_from_filename, sanitize_name
 
 logging.basicConfig(
     level=logging.INFO,

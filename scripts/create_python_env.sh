@@ -6,6 +6,7 @@ ENV_NAME="youtubeAlarm"
 # Create the conda environment and install all the necessary packages in one step
 conda create --name $ENV_NAME python=3.10 \
     conda-forge::ffmpeg \
+    conda-forge::nodejs \
     conda-forge::psutil \
     conda-forge::aioconsole \
     conda-forge::mutagen \
