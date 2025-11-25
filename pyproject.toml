@@ -7,7 +7,7 @@ name = "youtube-alarm"
 version = "0.1.0"
 description = "A Python-based alarm clock that plays music from a YouTube playlist using VLC."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
   {name = "Kristof S."}
