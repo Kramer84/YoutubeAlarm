@@ -1,6 +1,6 @@
 # YouTube Alarm Clock
 
-This project is a Python-based alarm clock that plays music from a YouTube playlist. The script downloads the audio from the playlist, stores it locally, and plays it at the specified alarm time using VLC media player. It also includes robust handling for metadata management, asynchronous downloading, and validation of downloaded files.
+This project is a Python-based alarm clock that plays music from a YouTube playlist. The script downloads the audio from the playlist, stores it locally, and plays it at the specified alarm time using VLC media player.
 
 ## Features
 
@@ -9,27 +9,31 @@ This project is a Python-based alarm clock that plays music from a YouTube playl
 - **Redundant Download Avoidance**: Checks if audio has already been downloaded to avoid redundant downloads.
 - **Asynchronous Operations**: Monitors the playlist and downloads new songs asynchronously.
 - **Playlist Management**: Maintains a buffer of songs to ensure continuous playback without interruptions.
-- **Alarm Triggered Playback**: Plays music at a specified alarm time, optionally starting with a set number of pre-downloaded songs.
+- **Alarm Triggered Playback**: Plays music at a specified alarm time.
 - **File Validation**: Optionally validate the integrity of MP3 files in the music library.
-- **VLC Integration**: Uses VLC media player for non-blocking audio playback with the ability to manage and monitor the playlist.
+- **VLC Integration**: Uses VLC media player for non-blocking audio playback.
 
 ## Requirements
 
-- Python 3.x
-- Conda
-- `yt-dlp`
-- `requests`
-- `ffmpeg`
-- VLC media player
-- `mutagen` (for metadata handling)
-- `psutil` (for process management)
+- Python 3.8+
+- Conda (recommended)
+- VLC media player (must be installed and in your system PATH)
+- **Python Packages**:
+  - `yt-dlp`
+  - `requests`
+  - `ffmpeg-python` (or `ffmpeg` installed on system)
+  - `mutagen`
+  - `psutil`
+  - `aioconsole`
+  - `python-slugify`
+  - `python-vlc`
 
 ## Installation
 
-### Clone the Repository
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/youtube-alarm-clock.git
+git clone [https://github.com/yourusername/youtube-alarm-clock.git](https://github.com/yourusername/youtube-alarm-clock.git)
 cd youtube-alarm-clock
 ```
 
@@ -41,39 +45,30 @@ Run the provided bash script to create the Conda environment and install the nec
 ./create_youtube_alarm_env.sh
 ```
 
-### Manual Installation
+### 2\. Create the Environment
 
-If you prefer to install the dependencies manually, follow these steps:
+**Linux / macOS:**
+Run the provided bash script to create the Conda environment:
 
-1. Create a new Conda environment and install Python:
+```bash
+./create_youtube_alarm_env.sh
+```
 
-    ```bash
-    conda create --name youtubeAlarm python -y
-    ```
+**Windows:**
+Windows users cannot run the `.sh` script directly. Please run these commands in your Anaconda Prompt:
 
-2. Activate the environment:
+```bash
+conda create --name youtubeAlarm python=3.8 -y
+conda activate youtubeAlarm
+conda install -c conda-forge yt-dlp requests ffmpeg psutil aioconsole python-slugify mutagen -y
+pip install python-vlc
+```
 
-    ```bash
-    conda activate youtubeAlarm
-    ```
-
-3. Install the required libraries:
-
-    ```bash
-    conda install -c conda-forge yt-dlp requests ffmpeg psutil -y
-    conda install -c anaconda logging argparse
-    pip install mutagen python-vlc
-    ```
-
-4. Deactivate the environment:
-
-    ```bash
-    conda deactivate
-    ```
-
-## VLC Configuration
+### 3\. VLC Configuration
 
 Enable VLC's HTTP interface by creating a VLC configuration file `vlcrc` if it doesn't already exist:
+
+**Linux / macOS:**
 
 ```sh
 mkdir -p ~/.config/vlc
@@ -81,59 +76,57 @@ echo 'http-host=localhost' > ~/.config/vlc/vlcrc
 echo 'http-password=vlc' >> ~/.config/vlc/vlcrc
 ```
 
+**Windows:** (NOT YET TESTED)
+
+1.  Open VLC Media Player.
+2.  Go to **Tools** -\> **Preferences**.
+3.  At the bottom left, under "Show settings", select **All**.
+4.  Navigate to **Interface** -\> **Main interfaces**.
+5.  Check the box for **Web**.
+6.  Navigate to **Interface** -\> **Main interfaces** -\> **Lua**.
+7.  Under **Lua HTTP**, set **Password** to `vlc`.
+8.  *Note: Ensure `vlc.exe` is added to your System PATH so the script can launch it.*
+
+
 ## Usage
 
-1. Activate the Conda environment:
+1.  Activate the environment:
 
     ```bash
     conda activate youtubeAlarm
     ```
 
-2. Run the script with the required arguments:
+2.  Run the script:
 
     ```bash
-    python youtube_alarm.py --hour <hour> --minute <minute> --playlist <playlist_url>
+    python src/main.py --hour <hour> --minute <minute> --playlist <playlist_url>
     ```
 
-    - Replace `<hour>` with the hour you want the alarm to trigger (0-23).
-    - Replace `<minute>` with the minute you want the alarm to trigger (0-59).
-    - Replace `<playlist_url>` with the URL of the YouTube playlist.
-
-    Example:
+    **Example:**
 
     ```bash
-    python youtube_alarm.py --hour 10 --minute 00 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7
+    python src/main.py --hour 07 --minute 30 --playlist [https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7](https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7)
     ```
 
-3. Optional flags:
+3.  **Arguments & Flags:**
 
-    - `--test`: Start playback immediately for testing purposes.
-    - `--validate`: Validate MP3 files in the music library before starting.
-    - `--shuffle`: Shuffle the playlist before playing.
-
-    Example with optional flags:
-
-    ```bash
-    python youtube_alarm.py --hour 7 --minute 30 --playlist https://www.youtube.com/playlist?list=PL8FvEtnALTbRjuG8qcoMqstD5MDwV00f7 --test --validate --shuffle
-    ```
+    | Argument | Description |
+    | :--- | :--- |
+    | `--hour` | Alarm hour (0-23). |
+    | `--minute` | Alarm minute (0-59). |
+    | `--playlist` | URL of the YouTube playlist. |
+    | `--test` | Start playback immediately (ignores time). |
+    | `--validate` | Check integrity of MP3 files before starting. |
+    | `--shuffle` | Shuffle the playlist order. |
+    | `--download-all` | Download the entire playlist immediately without waiting/buffering. |
 
 ## Testing
 
-### Unit Tests
+**Run Unit Tests:**
 
-Unit tests are available to validate the functionality of both the `MusicLibrary` and `VLCManager` classes.
-
-1. **Run Music Library Tests**:
-
-    ```bash
-    python -m unittest discover -s tests -p "music_library_test.py"
-    ```
-
-2. **Run VLC Manager Tests**:
-
-    ```bash
-    python -m unittest discover -s tests -p "vlc_test.py"
-    ```
+```bash
+python -m unittest discover -s tests
+```
 
 ## License
 
