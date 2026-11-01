@@ -1,9 +1,10 @@
-"""
-YouTube Alarm Clock package.
-"""
+from importlib.metadata import PackageNotFoundError, version
 
 from .music_library import MusicLibrary
-from .vlc_manager import VLCManager
 
-__all__ = ["MusicLibrary", "VLCManager"]
-__version__ = "0.1.0"
+__all__ = ["MusicLibrary"]
+
+try:
+    __version__ = version("youtube-alarm")
+except PackageNotFoundError:
+    __version__ = "unknown"

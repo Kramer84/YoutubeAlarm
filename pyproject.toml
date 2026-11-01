@@ -4,35 +4,38 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "youtube-alarm"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Python-based alarm clock that plays music from a YouTube playlist using VLC."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
-authors = [
-  {name = "Kristof S."}
-]
+authors = [ {name = "Kristof S."} ]
+
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+
 dependencies = [
-    "yt-dlp",
-    "requests",
-    "python-vlc",
+    "yt-dlp[default]",
+    "python-vlc>=3.0",
     "mutagen",
-    "psutil",
-    "aioconsole",
+    "typer>=0.12.0",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
 
 [project.urls]
 "Homepage" = "https://github.com/Kramer84/YoutubeAlarm"
 "Bug Tracker" = "https://github.com/Kramer84/YoutubeAlarm/issues"
 
 [project.scripts]
-# This allows you to run the alarm by typing `youtube-alarm` in the terminal
-youtube-alarm = "youtube_alarm.main:entry_point"
+youtube-alarm = "youtube_alarm.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
