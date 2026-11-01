@@ -61,6 +61,9 @@ Songs are stored as `<base-dir>/<playlist title>/<video id>_<title>.mp3`, tagged
 
 ## Development
 
+See `ROADMAP.md` for the current state, decisions, open questions and planned work, and `CODEBASE.md` for a map of the code.
+
+
 ```bash
 .venv/bin/python -m pytest
 ```

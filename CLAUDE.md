@@ -2,7 +2,7 @@
 
 YouTube Alarm: a Python CLI alarm clock. It downloads a YouTube playlist to local MP3s (yt-dlp + ffmpeg) and plays them in-process through libvlc (python-vlc) at the wake-up time.
 
-Read `CODEBASE.md` before exploring: it maps every module and the on-disk library format. Read `ROADMAP.md` before fixing a bug or adding a feature: the known issues are numbered there, so reference them by ID (e.g. `B3`) in commits and tell the user when you find a new one.
+Read `CODEBASE.md` before exploring: it maps every module and the on-disk library format. Read `ROADMAP.md` at the start of a session. Its top section holds the current state, the decisions already made (don't reopen them) and the open questions. Issues are numbered there: reference them by ID (e.g. `N1`) in commits, add any new one you find, and move finished items to its done log.
 
 ## Environment
 
@@ -20,6 +20,12 @@ Read `CODEBASE.md` before exploring: it maps every module and the on-disk librar
 - Run `.venv/bin/python -m pytest`. The tests need ffmpeg and libvlc, and never reach the network. An autouse fixture points `XDG_STATE_HOME` at `tmp_path`, so they never write the real log.
 - Test only at the agreed seams: the Typer CLI (`CliRunner`), `MusicLibrary` on `tmp_path`, `fetch_song`/`fetch_playlist` with `FakeYoutubeDL` patched over `yt_dlp.YoutubeDL`, `Player` on real libvlc with the `dummy` output, and `AlarmSession`/`run_alarm` with `FakePlayer`/`FakeClock`.
 - ffmpeg-generated MP3s carry an ID3 header. The `make_song` fixture strips it, so "untagged" really means untagged.
+
+## Workflow
+
+- Work test-first with the `tdd` skill: one failing test, then the code to pass it, at the seams listed under Tests. Agree on a new seam with the user before testing at it.
+- The user commits directly to `main`. Commit when asked, with a descriptive message that names roadmap IDs.
+- At the end of a session, update `ROADMAP.md` (state, decisions, next steps) and `CODEBASE.md` (module map), so the next session can start from them.
 
 ## Conventions
 
